@@ -1,5 +1,5 @@
 from casatools import table, ms
-from casatasks import mstransform, split, tclean
+from casatasks import mstransform
 from pathlib import Path
 import argparse
 import os
@@ -9,80 +9,6 @@ import numpy as np
 
 from casatools import table
 import numpy as np
-
-
-def estimate_system_temperature(ms_path):
-    # Create a table tool
-    tb_tool = table()
-
-    # Open the MS
-    tb_tool.open(ms_path)
-
-    # Get the time, antenna1, antenna2, and visibility data
-    time = tb_tool.getcol("TIME")
-    antenna1 = tb_tool.getcol("ANTENNA1")
-    antenna2 = tb_tool.getcol("ANTENNA2")
-    data = tb_tool.getcol("DATA")
-
-    # Close the MS
-    tb_tool.close()
-
-    # Get the unique baselines
-    baselines = set(zip(antenna1, antenna2))
-
-    diff_over_time = []
-
-    # For each baseline, calculate the diff over time
-    for baseline in baselines:
-        # Find the indices for this baseline
-        indices = np.where((antenna1 == baseline[0]) & (antenna2 == baseline[1]))
-
-        # Sort the indices by time
-        sorted_indices = indices[0][np.argsort(time[indices])]
-
-        # Get the data for this baseline, sorted by time
-        sorted_data = data[sorted_indices]
-
-        # Calculate the diff over time
-        diff = np.diff(sorted_data, axis=0)
-
-        diff_over_time.append(diff)
-
-    return diff_over_time.std() / 2**0.5
-
-
-def overwrite_visibilities(ms_path, new_ms_path, new_visibilities=None, sigma_n=None):
-    # Create a copy of the original MS
-    split(vis=ms_path, outputvis=new_ms_path, datacolumn="data")
-
-    # Create a table tool
-    tb_tool = table()
-
-    # Open the new MS
-    tb_tool.open(new_ms_path, nomodify=False)
-
-    # Get the existing visibilities
-    existing_visibilities = tb_tool.getcol("DATA")
-
-    # estimate noise or use predefined visibilities
-    if sigma_n is not None:
-        real = np.random.normal(0, sigma_n, existing_visibilities.shape)
-        imaginary = 1j * np.random.normal(0, sigma_n, existing_visibilities.shape)
-        new_visibilities = real + imaginary
-
-    else:
-        pass
-    # Check the shapes of the existing and new visibilities
-    if existing_visibilities.shape != new_visibilities.shape:
-        raise ValueError(
-            "Shape of new visibilities does not match existing visibilities"
-        )
-
-    # Overwrite the visibilities
-    tb_tool.putcol("DATA", new_visibilities)
-
-    # Close the MS
-    tb_tool.close()
 
 
 def find_largest_spw(ms_path):
@@ -118,18 +44,6 @@ def save_largest_spw(ms_path, new_ms_path):
         split(
             vis=ms_path, outputvis=new_ms_path, spw=str(largest_spw), datacolumn="data"
         )
-
-
-def quick_clean(vis):
-    vis = Path(vis)
-    tclean(
-        str(vis),
-        imagename=str(vis.root + vis.stem),
-        datacolumn="data",
-        imsize=(512, 512),
-        cell=["0.003arcsec", "0.003arcsec"],
-        niter=0,
-    )
 
 
 def ensure_single_spectralwindow(ms_path, outname=None):
@@ -209,6 +123,3 @@ if __name__ == "__main__":
         outname = args.outname
     if Path(outname).is_dir == False:
         save_largest_spw(str(ms_file), str(outname))
-    else:
-        quick_clean(vis=str(ms_file))
-        quick_clean(vis=str(outname))

@@ -1,7 +1,6 @@
 #!/bin/bash
 
 #SBATCH --time=15:00:00
-#SBATCH --mem=800G
 #SBATCH --constraint=A100
 #SBATCH --output=logs/%j.%x.out
 #SBATCH --exclude=compute-0-4
@@ -32,7 +31,7 @@ EOF
 while getopts ":n:p:" opt; do
   case $opt in
   n)
-    NO_SAMPLES="$OPTARG"
+    no_samples="$OPTARG"
     ;;
   p)
     PATH_TO_MS="$OPTARG"
@@ -52,11 +51,11 @@ while getopts ":n:p:" opt; do
 done
 
 # Check if N is a valid integer or convert it
-if ! [[ $NO_SAMPLES =~ ^-?[0-9]+$ ]]; then
-  N=$(expr "$NO_SAMPLES" + 0 2>/dev/null)
+if ! [[ $no_samples =~ ^-?[0-9]+$ ]]; then
+  N=$(expr "$no_samples" + 0 2>/dev/null)
   if [ $? -ne 0 ]; then
     echo ">>> Error: -n must be an integer. Setting to 1." >&2
-    NO_SAMPLES=1
+    no_samples=1
   fi
 fi
 
@@ -65,18 +64,41 @@ CURRENT_PATH=$(pwd)
 mkdir -p data
 FOLDER_NAME=$(basename "$PATH_TO_MS")
 FOLDER_NAME="${FOLDER_NAME%.*}"
-OUT_PATH=$CURRENT_PATH/data/$FOLDER_NAME/
-echo ">>> Creating $OUT_PATH folder for output."
-mkdir -p $OUT_PATH
+OUT_PATH=$CURRENT_PATH/data/$FOLDER_NAME
+echo ">>> Creating ${OUT_PATH} folder for output."
+mkdir -p "$OUT_PATH"
 
 echo ">>> Activating environment"
 source /home/mbowles/.bashrc # Replace with my own.
 source activate conda_casa
 
-echo ">>> Starting noise modelling."
-python noise_modelling.py \
-  --ms $PATH_TO_MS \
-  --outpath $OUT_PATH \
-  --number $NO_SAMPLES
+cp -r "$PATH_TO_MS" "${OUT_PATH}/" # Copy for imaging.
+
+# Generate PSF image and dirty image of original
+python quick_imaging.py \
+  --ms "${OUT_PATH}/"
+
+TMP_MS="${OUT_PATH}/$(basename ${FOLDER_NAME})_noise.ms"
+echo ">>> Copying input MS to ${TMP_MS} to be overwritten with noise."
+cp -r $PATH_TO_MS $TMP_MS
+
+# Start loop
+for idx in $(seq 0 1 $no_samples); do
+  echo ">>> Starting noise modelling ${idx}"
+  # Model noise - generates fits files for each sampled noise MS.
+  python noise_modelling.py \
+    --ms $TMP_MS \
+    --number $idx \
+    --cont
+
+  # Remove residual files
+  echo ">>> Removing all residual files in ${OUT_PATH}"
+  for file in "$OUT_PATH"/*; do
+    # If the file does not end with .fits and is not the temporary MS, then remove it
+    if [[ $file != *.fits && $(basename "$file") != $(basename "$TMP_MS") ]]; then
+      rm -r "$file"
+    fi
+  done
+done
 
 echo ">>> finish"

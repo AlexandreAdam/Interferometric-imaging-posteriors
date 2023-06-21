@@ -4,18 +4,22 @@ import argparse
 import shutil
 
 
-def quick_clean(vis, overwrite=True):
+def quick_clean(vis, overwrite=True, index=None):
     vis = Path(vis)
     image_name = str(vis.parent) + "/" + str(vis.stem)
 
-    # List of possible tclean output extensions
-    extensions = [".image", ".mask", ".model", ".pb", ".psf", ".residual", ".sumwt"]
+    if index is not None:
+        image_name += f"_{index:06d}"
 
-    # Remove any existing tclean output files
-    for ext in extensions:
-        path = Path(image_name + ext)
-        if path.exists():
-            shutil.rmtree(path)
+    if overwrite:
+        # List of possible tclean output extensions
+        extensions = [".image", ".mask", ".model", ".pb", ".psf", ".residual", ".sumwt"]
+
+        # Remove any existing tclean output files
+        for ext in extensions:
+            path = Path(image_name + ext)
+            if path.exists():
+                shutil.rmtree(path)
 
     # Create dirty image
     tclean(

@@ -3,6 +3,7 @@ from casatasks import split
 from pathlib import Path
 import numpy as np
 import argparse
+import quick_imaging
 
 
 def estimate_system_temperature(ms_path):
@@ -101,30 +102,34 @@ if __name__ == "__main__":
         default="/share/nas2_5/mbowles/data/alma/HTLup_continuum.ms",
     )
     parser.add_argument(
-        "-o",
-        "--outpath",
-        help="The name of the file under which the formatted data is saved.",
-        required=False,
-        default=None,
-    )
-
-    parser.add_argument(
         "-n",
         "--number",
         help="The name of the file under which the formatted data is saved.",
         required=False,
         default=None,
     )
+    parser.add_argument("--cont", action="store_true", help="Continue processing")
 
     ### Parse arguments
     args = parser.parse_args()
     ms_file = Path(args.ms)
-    outpath = str(args.outpath)
-    # outname = outpath + str(ms_file.stem) + "_noise_{index%05d}" + str(ms_file.suffix)
 
-    ### Estimate parameters for noise gemeration
-    T_sys = estimate_system_temperature(str(ms_file))  # T_sys approximation
-    sigma_n = T_sys / 2**0.5
+    # Set out index
+    if args.number is not None:
+        index = int(args.number)
+    else:
+        index = 0
+    if not args.cont:  # Continue with next index
+        index = 0
+        # Loop through each file in the folder
+        for file in ms_file.parent.glob("*.fits"):
+            # Extract the number from the filename
+            num = re.findall(r"\d+", str(ms_file.parent))
+            if num:
+                num = int(num[0])
+                # If num is greater than or equal to index, update index
+                if num >= index:
+                    index = num + 1
 
     for i in range(int(args.number)):
         outname = (
@@ -140,7 +145,7 @@ if __name__ == "__main__":
 
         ### Write out a new visibility set with the generated
         overwrite_visibilities(
-            ms_path=str(args.ms),
-            new_ms_path=outname.format(index=i),
+    image_name = quick_imaging.quick_clean(vis=str(ms_file), index=index)
+    quick_imaging.export_fits(image_name=image_name)
             sigma_n=sigma_n,  # Use when randomly generating vis from sigma_n
         )

@@ -85,7 +85,7 @@ if __name__ == "__main__":
         # Loop through each file in the folder
         for file in ms_file.parent.glob("*.fits"):
             # Extract the number from the filename
-            num = re.findall(r"\d+", str(ms_file.parent))
+            num = re.findall(r"\d+", str(file))
             if num:
                 num = int(num[0])
                 # If num is greater than or equal to index, update index

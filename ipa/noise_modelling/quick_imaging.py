@@ -19,6 +19,7 @@ def quick_clean(vis, overwrite=True, index=None):
         for ext in extensions:
             path = Path(image_name + ext)
             if path.exists():
+                print(path)
                 shutil.rmtree(path)
 
     # Create dirty image
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     # Parse arguments
     args = parser.parse_args()
     path = Path(args.ms)
-    if path.exists() and path.is_dir():
+    if path.exists() and path.is_dir() and (str(path) != "."):
         if path.name.endswith(".ms"):
             # List files matching the pattern ".ms"
             files = [str(path)]
@@ -74,4 +75,4 @@ if __name__ == "__main__":
         export_fits(image_name=image_name, psf=True)
 
     else:
-        raise ValueError(f"Path is not a directory (or measurement set): {path}")
+        raise ValueError(f"Path is not a valid directory (or measurement set): {path}")

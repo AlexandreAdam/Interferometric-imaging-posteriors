@@ -50,6 +50,19 @@ while getopts ":n:p:" opt; do
   esac
 done
 
+if [ -z "$PATH_TO_MS" ]; then
+  echo "No directory path provided. Please run the script with a -p parameter."
+  exit 1
+fi
+
+# Check if parameter is a directory
+if [ -d "$PATH_TO_MS" ]; then
+  echo ">>> $PATH_TO_MS is a directory."
+else
+  echo ">>> $PATH_TO_MS is not a directory."
+  exit 1
+fi
+
 # Check if N is a valid integer or convert it
 if ! [[ $no_samples =~ ^-?[0-9]+$ ]]; then
   N=$(expr "$no_samples" + 0 2>/dev/null)

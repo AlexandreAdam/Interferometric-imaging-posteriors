@@ -4,18 +4,23 @@ import argparse
 import shutil
 
 
-def quick_clean(vis, overwrite=True):
+def quick_clean(vis, overwrite=True, index=None):
     vis = Path(vis)
     image_name = str(vis.parent) + "/" + str(vis.stem)
 
-    # List of possible tclean output extensions
-    extensions = [".image", ".mask", ".model", ".pb", ".psf", ".residual", ".sumwt"]
+    if index is not None:
+        image_name += f"_{index:06d}"
 
-    # Remove any existing tclean output files
-    for ext in extensions:
-        path = Path(image_name + ext)
-        if path.exists():
-            shutil.rmtree(path)
+    if overwrite:
+        # List of possible tclean output extensions
+        extensions = [".image", ".mask", ".model", ".pb", ".psf", ".residual", ".sumwt"]
+
+        # Remove any existing tclean output files
+        for ext in extensions:
+            path = Path(image_name + ext)
+            if path.exists():
+                print(path)
+                shutil.rmtree(path)
 
     # Create dirty image
     tclean(
@@ -57,7 +62,7 @@ if __name__ == "__main__":
     # Parse arguments
     args = parser.parse_args()
     path = Path(args.ms)
-    if path.exists() and path.is_dir():
+    if path.exists() and path.is_dir() and (str(path) != "."):
         if path.name.endswith(".ms"):
             # List files matching the pattern ".ms"
             files = [str(path)]
@@ -70,4 +75,4 @@ if __name__ == "__main__":
         export_fits(image_name=image_name, psf=True)
 
     else:
-        raise ValueError(f"Path is not a directory (or measurement set): {path}")
+        raise ValueError(f"Path is not a valid directory (or measurement set): {path}")

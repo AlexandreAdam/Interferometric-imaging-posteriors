@@ -80,14 +80,13 @@ if __name__ == "__main__":
         index = int(args.number)
     else:
         index = 0
-    if not args.cont:  # Continue with next index
+    if args.cont:  # Continue with next index
         index = 0
         # Loop through each file in the folder
         for file in ms_file.parent.glob("*.fits"):
             # Extract the number from the filename
-            num = re.findall(r"\d+", str(file))
+            num = int(re.findall(r"\d+", str(file))[-1])
             if num:
-                num = int(num[0])
                 # If num is greater than or equal to index, update index
                 if num >= index:
                     index = num + 1
